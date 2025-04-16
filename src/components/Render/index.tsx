@@ -83,7 +83,7 @@ const Render = (props: RenderProps) => {
                   });
                 } else {
                   props.data.domainModels[0] = {
-                    id: conetxt.current.id,
+                    id: uuid(),
                     type: "nocobase",
                     connect: {
                       baseURL: conetxt.current.baseURL,

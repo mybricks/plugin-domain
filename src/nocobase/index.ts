@@ -1,6 +1,10 @@
-import { APIClient } from "@nocobase/sdk";
 import { asyncTryCatch } from "@luckybytes/utils";
 import { DomainModelNocobase } from "./type";
+import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
+
+type Axios = (
+  config: AxiosRequestConfig<unknown>,
+) => Promise<AxiosResponse<Any, Any>>;
 
 type Connect = DomainModelNocobase["connect"] & {
   [key: string]: Any;
@@ -14,21 +18,11 @@ type Connect = DomainModelNocobase["connect"] & {
  */
 
 class Nocobase {
-  private _APIClient: APIClient;
-
-  constructor(connect: Connect) {
-    /** 初始化API */
-    this._APIClient = new APIClient({
-      baseURL: connect.baseURL,
-      storagePrefix: connect.storagePrefix,
-      withCredentials: false,
-    });
-
-    this._APIClient.auth.token = connect.token;
-  }
+  constructor(private _connect: Connect) {}
 
   async getDomainModels() {
     const authCheckSuccess = await this.authCheck();
+
     if (!authCheckSuccess) {
       return [];
     }
@@ -50,30 +44,56 @@ class Nocobase {
     const domainModels: DomainModel[] = [];
 
     // 仅获取所有主数据源
-    const {
-      data: { data: collections },
-    } = (await this._APIClient.resource("collections").list({
-      paginate: false,
-      sort: ["sort"],
-      filter: { hidden: { $isFalsy: true } },
-    })) as { data: { data: Collections } };
+    const [error, success] = await asyncTryCatch(axios as Axios, {
+      url: `${this._connect.baseURL}/collections:list`,
+      method: "get",
+      params: {
+        paginate: false,
+        sort: ["sort"],
+        filter: JSON.stringify({ hidden: { $isFalsy: true } }),
+      },
+      headers: {
+        authorization: `Bearer ${this._connect.token}`,
+      },
+      withCredentials: false,
+    });
+
+    if (error) {
+      console.error(`[nocobase - /collections:list] ${error}`);
+      return [];
+    }
+
+    const collections = success.data.data as Collections;
 
     await Promise.all(
       collections.map(async (collection, index) => {
-        const {
-          data: { data: fields },
-        } = (await this._APIClient
-          .resource("collections.fields", collection.name)
-          .list({
+        const [error, success] = await asyncTryCatch(axios as Axios, {
+          url: `${this._connect.baseURL}/collections/${collection.name}/fields:list`,
+          method: "get",
+          params: {
             paginate: false,
             sort: ["sort"],
-            filter: {
+            filter: JSON.stringify({
               $or: [
                 { "interface.$not": null },
                 { "options.source.$notEmpty": true },
               ],
-            },
-          })) as { data: { data: Fields } };
+            }),
+          },
+          headers: {
+            authorization: `Bearer ${this._connect.token}`,
+          },
+          withCredentials: false,
+        });
+
+        if (error) {
+          console.error(
+            `[nocobase - /collections/${collection.name}/fields:list] ${error}`,
+          );
+          return;
+        }
+
+        const fields = success.data.data as Fields;
 
         const recordProperties = fields.reduce<Record<string, Schema>>(
           (pre, cur) => {
@@ -292,29 +312,25 @@ class Nocobase {
 
   /** 鉴权 */
   async authCheck() {
-    const { _APIClient } = this;
     /** 验证token是否过期 */
-    const [, checkSuccess] = await asyncTryCatch(
-      _APIClient.request.bind(_APIClient),
-      {
-        method: "get",
-        url: "/auth:check",
+    const [error, checkSuccess] = await asyncTryCatch(axios as Axios, {
+      url: `${this._connect.baseURL}/auth:check`,
+      method: "get",
+      headers: {
+        authorization: `Bearer ${this._connect.token}`,
       },
-    );
+      withCredentials: false,
+    });
 
     if (checkSuccess) {
       return true;
     }
 
-    console.error("[nocobase - /auth:check] 鉴权未通过，请检查token配置。");
+    console.error(`[nocobase - /auth:check] ${error}`);
 
     return false;
   }
 }
-
-// class APICollections {
-//   constructor(private _APIClient: APIClient) {}
-// }
 
 export default Nocobase;
 

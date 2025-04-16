@@ -11,6 +11,7 @@ export default defineConfig({
     externals: {
       react: "React",
       antd: "antd",
+      axios: "axios",
     },
   },
 });

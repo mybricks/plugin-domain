@@ -8,6 +8,7 @@ type TabRenderParams = {
 };
 
 type DomainModelOther = {
+  id: string;
   type: "other";
 };
 
@@ -22,6 +23,10 @@ type OnLoadParams = {
   };
 };
 
+type ToJSONParams = {
+  data: Data;
+};
+
 const domainPlugin = () => {
   return {
     name: "@mybricks/plugin-domain",
@@ -31,17 +36,7 @@ const domainPlugin = () => {
     version: "0.0.1",
     description: "领域模型",
     data: {
-      domainModels: [
-        // {
-        //   id: "iiii", // 需要区分不同的nocobase
-        //   type: "nocobase",
-        //   connect: {
-        //     baseURL: "http://127.0.0.1:13001/api",
-        //     token:
-        //       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsInRlbXAiOnRydWUsImlhdCI6MTc0NDc3MTc2MSwic2lnbkluVGltZSI6MTc0NDc3MTc2MTk5OCwiZXhwIjoxNzQ0ODU4MTYxLCJqdGkiOiIyMGIyN2I1Yi0yNTZmLTQzMDYtYTllZi0xNDc4NThkMTk0N2EifQ.YCs_ZBtNa02E4MPuC60ohqMo48w0Wu_rDn52ziqebB0",
-        //   },
-        // },
-      ],
+      domainModels: [],
     },
     contributes: {
       geoView: {
@@ -61,7 +56,14 @@ const domainPlugin = () => {
       },
     },
     onLoad(params: OnLoadParams) {
+      // [TODO] 后面多个领域模型后，再改
+      const _cache: {
+        domainModel?: DomainModel[];
+      } = {};
       params.domainModel.getAll = async () => {
+        if (_cache.domainModel) {
+          return _cache.domainModel;
+        }
         const domainModels: DomainModel[] = [];
 
         await Promise.all(
@@ -84,8 +86,16 @@ const domainPlugin = () => {
             }
           }),
         );
+
+        if (domainModels.length) {
+          _cache.domainModel = domainModels;
+        }
+
         return domainModels;
       };
+    },
+    toJSON(params: ToJSONParams) {
+      return params.data;
     },
   };
 };
