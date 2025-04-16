@@ -1,16 +1,24 @@
 import React from "react";
-
 import Render from "./components/Render";
-import Nocobase from "./nocobase";
+import { pluginIcon } from "./components/Icon";
+import Nocobase, { DomainModelNocobase } from "./nocobase";
 
-type RenderParams = {
+type TabRenderParams = {
   data: Data;
+};
+
+type DomainModelOther = {
+  type: "other";
+};
+
+type Data = {
+  domainModels: (DomainModelNocobase | DomainModelOther)[];
 };
 
 type OnLoadParams = {
   data: Data;
   domainModel: {
-    getAll: () => Promise<[]>;
+    getAll: () => Promise<DomainModel[]>;
   };
 };
 
@@ -24,14 +32,15 @@ const domainPlugin = () => {
     description: "领域模型",
     data: {
       domainModels: [
-        {
-          type: "nocobase",
-          connect: {
-            origin: "https://a_08e0ip11mv5.v7.demo-cn.nocobase.com/api",
-            account: "admin@nocobase.com",
-            password: "admin123",
-          },
-        },
+        // {
+        //   id: "iiii", // 需要区分不同的nocobase
+        //   type: "nocobase",
+        //   connect: {
+        //     baseURL: "http://127.0.0.1:13001/api",
+        //     token:
+        //       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsInRlbXAiOnRydWUsImlhdCI6MTc0NDc3MTc2MSwic2lnbkluVGltZSI6MTc0NDc3MTc2MTk5OCwiZXhwIjoxNzQ0ODU4MTYxLCJqdGkiOiIyMGIyN2I1Yi0yNTZmLTQzMDYtYTllZi0xNDc4NThkMTk0N2EifQ.YCs_ZBtNa02E4MPuC60ohqMo48w0Wu_rDn52ziqebB0",
+        //   },
+        // },
       ],
     },
     contributes: {
@@ -41,373 +50,46 @@ const domainPlugin = () => {
           render() {},
         },
       },
-      // sliderView: {
-      //   tab: {
-      //     title: "领域模型",
-      //     render(params: RenderParams) {
-      //       return <Render data={params.data} />;
-      //     },
-      //   },
-      // },
+      sliderView: {
+        tab: {
+          title: "领域模型",
+          icon: pluginIcon,
+          render(params: TabRenderParams) {
+            return <Render data={params.data} />;
+          },
+        },
+      },
     },
-    // activate(params: OnLoadParams) {
-    //   console.log("params => ", params);
-    //   console.log("🚀 获取领域模型 => ", params.data);
-
-    //   params.data.domainModels.map((domainModel) => {
-    //     if (domainModel.type === "nocobase") {
-    //       return new Promise(async (resolve) => {
-    //         // console.log("domainModel => ", domainModel);
-    //         const nocobase = new Nocobase(domainModel.connect);
-    //         const domainModelNocobases = await nocobase.getDomainModels();
-    //         // console.log(
-    //         //   "❌ domainModelNocobases 结果 => ",
-    //         //   domainModelNocobases,
-    //         // );
-    //         resolve(domainModelNocobases);
-    //       });
-    //       // const nocobaseApi = new NocobaseApi(
-    //       //   domainModel.connect.origin,
-    //       //   domainModel.connect.account,
-    //       //   domainModel.connect.password
-    //       // );
-    //       // nocobaseApi
-    //       //   .get("/api/v1/openapi.json")
-    //       //   .then((res) => {
-    //       //     console.log("获取到的结果 => ", res);
-    //       //   })
-    //       //   .catch((err) => {
-    //       //     console.log("获取失败 => ", err);
-    //       //   });
-    //     }
-    //   });
-    // },
     onLoad(params: OnLoadParams) {
-      // @ts-expect-error 测试用
-      params.domainModel.getAll = () => {
-        const nocobase = new Nocobase({
-          origin: "https://a_08e0ip11mv5.v7.demo-cn.nocobase.com/api",
-          account: "admin@nocobase.com",
-          password: "admin123",
-        });
-        const domainModelNocobases = nocobase.getDomainModels();
-        return domainModelNocobases;
-        // return [
-        //   {
-        //     id: "users2",
-        //     title: "users2",
-        //     fields: [
-        //       {
-        //         name: "id",
-        //         title: "用户ID",
-        //         type: "integer",
-        //       },
-        //       {
-        //         name: "nickname",
-        //         title: "昵称",
-        //         type: "string",
-        //       },
-        //       {
-        //         name: "username",
-        //         title: "用户名",
-        //         type: "string",
-        //       },
-        //       {
-        //         name: "email",
-        //         title: "email",
-        //         type: "string",
-        //       },
-        //       {
-        //         name: "phone",
-        //         title: "手机号码",
-        //         type: "string",
-        //       },
-        //       {
-        //         name: "password",
-        //         title: "密码",
-        //         type: "string",
-        //       },
-        //       {
-        //         name: "createdAt",
-        //         title: "创建时间",
-        //         type: "string",
-        //       },
-        //       {
-        //         name: "updatedAt",
-        //         title: "更新时间",
-        //         type: "string",
-        //       },
-        //     ],
-        //     services: [
-        //       {
-        //         name: "/users:list",
-        //         title: "/users:list",
-        //         default: true,
-        //         method: "get",
-        //         params: [],
-        //         returnType: {
-        //           type: "object",
-        //           properties: {
-        //             data: "number",
-        //           },
-        //         },
-        //       },
-        //       {
-        //         name: "/users:get",
-        //         title: "/users:get",
-        //         default: false,
-        //         method: "get",
-        //         params: [
-        //           {
-        //             name: "filterByTk",
-        //             title: "user id",
-        //             type: "integer",
-        //           },
-        //         ],
-        //         returnType: {
-        //           type: "object",
-        //           properties: {
-        //             id: {
-        //               type: "integer",
-        //               description: "用户ID",
-        //             },
-        //             nickname: {
-        //               type: "string",
-        //               description: "昵称",
-        //             },
-        //             username: {
-        //               type: "string",
-        //               description: "用户名",
-        //             },
-        //             email: {
-        //               type: "string",
-        //               description: "email",
-        //             },
-        //             phone: {
-        //               type: "string",
-        //               description: "手机号码",
-        //             },
-        //             password: {
-        //               type: "string",
-        //               description: "密码",
-        //             },
-        //             createdAt: {
-        //               type: "string",
-        //               format: "date-time",
-        //               description: "创建时间",
-        //             },
-        //             updatedAt: {
-        //               type: "string",
-        //               format: "date-time",
-        //               description: "更新时间",
-        //             },
-        //           },
-        //         },
-        //       },
-        //       {
-        //         name: "/users:create",
-        //         title: "/users:create",
-        //         default: false,
-        //         method: "post",
-        //         params: [
-        //           {
-        //             name: "id",
-        //             title: "用户ID",
-        //             type: "integer",
-        //           },
-        //           {
-        //             name: "nickname",
-        //             title: "昵称",
-        //             type: "string",
-        //           },
-        //           {
-        //             name: "username",
-        //             title: "用户名",
-        //             type: "string",
-        //           },
-        //           {
-        //             name: "email",
-        //             title: "email",
-        //             type: "string",
-        //           },
-        //           {
-        //             name: "phone",
-        //             title: "手机号码",
-        //             type: "string",
-        //           },
-        //           {
-        //             name: "password",
-        //             title: "密码",
-        //             type: "string",
-        //           },
-        //           {
-        //             name: "createdAt",
-        //             title: "创建时间",
-        //             type: "string",
-        //           },
-        //           {
-        //             name: "updatedAt",
-        //             title: "更新时间",
-        //             type: "string",
-        //           },
-        //         ],
-        //         returnType: {
-        //           type: "object",
-        //           properties: {
-        //             id: {
-        //               type: "integer",
-        //               description: "用户ID",
-        //             },
-        //             nickname: {
-        //               type: "string",
-        //               description: "昵称",
-        //             },
-        //             username: {
-        //               type: "string",
-        //               description: "用户名",
-        //             },
-        //             email: {
-        //               type: "string",
-        //               description: "email",
-        //             },
-        //             phone: {
-        //               type: "string",
-        //               description: "手机号码",
-        //             },
-        //             password: {
-        //               type: "string",
-        //               description: "密码",
-        //             },
-        //             createdAt: {
-        //               type: "string",
-        //               format: "date-time",
-        //               description: "创建时间",
-        //             },
-        //             updatedAt: {
-        //               type: "string",
-        //               format: "date-time",
-        //               description: "更新时间",
-        //             },
-        //           },
-        //         },
-        //       },
-        //       {
-        //         name: "/users:update",
-        //         title: "/users:update",
-        //         default: false,
-        //         method: "post",
-        //         params: [
-        //           {
-        //             name: "filterByTk",
-        //             title: "user id",
-        //             type: "integer",
-        //           },
-        //           {
-        //             name: "id",
-        //             title: "用户ID",
-        //             type: "integer",
-        //           },
-        //           {
-        //             name: "nickname",
-        //             title: "昵称",
-        //             type: "string",
-        //           },
-        //           {
-        //             name: "username",
-        //             title: "用户名",
-        //             type: "string",
-        //           },
-        //           {
-        //             name: "email",
-        //             title: "email",
-        //             type: "string",
-        //           },
-        //           {
-        //             name: "phone",
-        //             title: "手机号码",
-        //             type: "string",
-        //           },
-        //           {
-        //             name: "password",
-        //             title: "密码",
-        //             type: "string",
-        //           },
-        //           {
-        //             name: "createdAt",
-        //             title: "创建时间",
-        //             type: "string",
-        //           },
-        //           {
-        //             name: "updatedAt",
-        //             title: "更新时间",
-        //             type: "string",
-        //           },
-        //         ],
-        //         returnType: {
-        //           type: "object",
-        //           properties: {
-        //             id: {
-        //               type: "integer",
-        //               description: "用户ID",
-        //             },
-        //             nickname: {
-        //               type: "string",
-        //               description: "昵称",
-        //             },
-        //             username: {
-        //               type: "string",
-        //               description: "用户名",
-        //             },
-        //             email: {
-        //               type: "string",
-        //               description: "email",
-        //             },
-        //             phone: {
-        //               type: "string",
-        //               description: "手机号码",
-        //             },
-        //             password: {
-        //               type: "string",
-        //               description: "密码",
-        //             },
-        //             createdAt: {
-        //               type: "string",
-        //               format: "date-time",
-        //               description: "创建时间",
-        //             },
-        //             updatedAt: {
-        //               type: "string",
-        //               format: "date-time",
-        //               description: "更新时间",
-        //             },
-        //           },
-        //         },
-        //       },
-        //       {
-        //         name: "/users:destroy",
-        //         title: "/users:destroy",
-        //         default: false,
-        //         method: "post",
-        //         params: [
-        //           {
-        //             name: "filterByTk",
-        //             title: "role name",
-        //             type: "string",
-        //           },
-        //         ],
-        //         returnType: {
-        //           type: "object",
-        //           properties: {
-        //             data: "number",
-        //           },
-        //         },
-        //       },
-        //     ],
-        //   },
-        // ];
+      params.domainModel.getAll = async () => {
+        const domainModels: DomainModel[] = [];
+
+        await Promise.all(
+          params.data.domainModels.map(async (domainModel) => {
+            if (domainModel.type === "nocobase") {
+              const { id, connect } = domainModel;
+              const nocobase = new Nocobase({
+                ...connect,
+                storagePrefix: `NOCOBASE_${id}_`,
+              });
+              const domainModelNocobases = await nocobase.getDomainModels();
+              domainModels.push(
+                ...domainModelNocobases.map((domainModel) => {
+                  return {
+                    ...domainModel,
+                    id: `${id}.${domainModel.id}`,
+                  };
+                }),
+              );
+            }
+          }),
+        );
+        return domainModels;
       };
     },
   };
 };
 
 export default domainPlugin;
+
+export type { Data };

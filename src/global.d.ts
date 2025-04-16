@@ -8,19 +8,25 @@ type Any = any;
 
 type Schema = Any;
 
-type DomainModelNocobase = {
-  type: "nocobase";
-  connect: {
-    origin: string;
-    account: string;
-    password: string;
-  };
-};
-
-type DomainModelOther = {
-  type: "other";
-};
-
-type Data = {
-  domainModels: (DomainModelNocobase | DomainModelOther)[];
+/** 领域模型 */
+type DomainModel = {
+  id: string;
+  title: string;
+  fields: {
+    name: string;
+    title: string;
+    schema: Schema;
+  }[];
+  services: {
+    name: string;
+    title: string;
+    method: "get" | "post";
+    params: {
+      name: string;
+      title: string;
+      in: "path" | "query" | "header" | "body";
+      schema: Schema;
+    }[];
+    responses: Schema;
+  }[];
 };
