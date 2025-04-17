@@ -1,10 +1,11 @@
 import { asyncTryCatch } from "@luckybytes/utils";
 import { DomainModelNocobase } from "./type";
 import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
+import { getLocaleText } from "./locale";
 
-type Axios = (
+type Axios<R = unknown> = (
   config: AxiosRequestConfig<unknown>,
-) => Promise<AxiosResponse<Any, Any>>;
+) => Promise<AxiosResponse<{ data: R }, Any>>;
 
 type Connect = DomainModelNocobase["connect"] & {
   [key: string]: Any;
@@ -17,41 +18,36 @@ type Connect = DomainModelNocobase["connect"] & {
  * 3. 失败 {"errors":[{"message":"ID must be unique"}]}
  */
 
+/** 数据源 */
+type Collections = {
+  name: string;
+  title: string;
+  fields: Fields;
+  /**
+   * true - 不展示的表
+   */
+  hidden: boolean;
+}[];
+
+/** 字段列表 */
+type Fields = {
+  name: string;
+  uiSchema?: {
+    title: string;
+    "x-read-pretty"?: boolean;
+  };
+}[];
+
 class Nocobase {
   constructor(private _connect: Connect) {}
 
   async getDomainModels() {
-    const authCheckSuccess = await this.authCheck();
-
-    if (!authCheckSuccess) {
-      return [];
-    }
-
-    /** 数据源 */
-    type Collections = {
-      name: string;
-      title: string;
-    }[];
-
-    /** 字段列表 */
-    type Fields = {
-      name: string;
-      uiSchema?: {
-        "x-read-pretty"?: boolean;
-      };
-    }[];
-
     const domainModels: DomainModel[] = [];
 
     // 仅获取所有主数据源
-    const [error, success] = await asyncTryCatch(axios as Axios, {
-      url: `${this._connect.baseURL}/collections:list`,
+    const [error, success] = await asyncTryCatch(axios as Axios<Collections>, {
+      url: `${this._connect.baseURL}/collections:listMeta`,
       method: "get",
-      params: {
-        paginate: false,
-        sort: ["sort"],
-        filter: JSON.stringify({ hidden: { $isFalsy: true } }),
-      },
       headers: {
         authorization: `Bearer ${this._connect.token}`,
       },
@@ -59,41 +55,16 @@ class Nocobase {
     });
 
     if (error) {
-      console.error(`[nocobase - /collections:list] ${error}`);
+      console.error(`[nocobase - /collections:listMeta] ${error}`);
       return [];
     }
 
-    const collections = success.data.data as Collections;
-
-    await Promise.all(
-      collections.map(async (collection, index) => {
-        const [error, success] = await asyncTryCatch(axios as Axios, {
-          url: `${this._connect.baseURL}/collections/${collection.name}/fields:list`,
-          method: "get",
-          params: {
-            paginate: false,
-            sort: ["sort"],
-            filter: JSON.stringify({
-              $or: [
-                { "interface.$not": null },
-                { "options.source.$notEmpty": true },
-              ],
-            }),
-          },
-          headers: {
-            authorization: `Bearer ${this._connect.token}`,
-          },
-          withCredentials: false,
+    success.data.data
+      .filter(({ hidden }) => !hidden)
+      .map(async (collection, index) => {
+        const fields = collection.fields.filter((field) => {
+          return field.uiSchema;
         });
-
-        if (error) {
-          console.error(
-            `[nocobase - /collections/${collection.name}/fields:list] ${error}`,
-          );
-          return;
-        }
-
-        const fields = success.data.data as Fields;
 
         const recordProperties = fields.reduce<Record<string, Schema>>(
           (pre, cur) => {
@@ -107,13 +78,11 @@ class Nocobase {
 
         domainModels[index] = {
           id: collection.name,
-          title: collection.title.startsWith("{{t")
-            ? collection.name
-            : collection.title,
+          title: getLocaleText(collection.title) || collection.name,
           fields: fields.map((field) => {
             return {
               name: field.name,
-              title: field.name,
+              title: getLocaleText(field.uiSchema!.title) || field.name,
               schema: {
                 type: "string",
               },
@@ -207,11 +176,7 @@ class Nocobase {
               params: fields
                 .filter((filed) => {
                   // 目前根据数据结构分析如下判断为主外键字段以及系统字段，不需要在创建时传递
-                  if (filed.uiSchema) {
-                    return !filed.uiSchema["x-read-pretty"];
-                  }
-
-                  return true;
+                  return !filed.uiSchema!["x-read-pretty"];
                 })
                 .map((field) => {
                   return {
@@ -251,11 +216,7 @@ class Nocobase {
                 fields
                   .filter((filed) => {
                     // 目前根据数据结构分析如下判断为主外键字段以及系统字段，不需要在更新时传递
-                    if (filed.uiSchema) {
-                      return !filed.uiSchema["x-read-pretty"];
-                    }
-
-                    return true;
+                    return !filed.uiSchema!["x-read-pretty"];
                   })
                   .map((field) => {
                     return {
@@ -304,8 +265,7 @@ class Nocobase {
             },
           ],
         };
-      }),
-    );
+      });
 
     return domainModels;
   }
