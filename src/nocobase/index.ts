@@ -62,14 +62,21 @@ class Nocobase {
     success.data.data
       .filter(({ hidden }) => !hidden)
       .map(async (collection, index) => {
-        const fields = collection.fields.filter((field) => {
-          return field.uiSchema;
-        });
+        const fields = collection.fields
+          .filter((field) => {
+            return field.uiSchema;
+          })
+          .map((field) => {
+            field.uiSchema!.title =
+              getLocaleText(field.uiSchema!.title) || field.name;
+            return field;
+          });
 
         const recordProperties = fields.reduce<Record<string, Schema>>(
           (pre, cur) => {
             pre[cur.name] = {
               type: "string",
+              title: cur.uiSchema!.title,
             };
             return pre;
           },
@@ -82,7 +89,7 @@ class Nocobase {
           fields: fields.map((field) => {
             return {
               name: field.name,
-              title: getLocaleText(field.uiSchema!.title) || field.name,
+              title: field.uiSchema!.title,
               schema: {
                 type: "string",
               },
@@ -181,7 +188,7 @@ class Nocobase {
                 .map((field) => {
                   return {
                     name: field.name,
-                    title: field.name,
+                    title: field.uiSchema!.title,
                     in: "body",
                     schema: {
                       type: "string",
@@ -221,7 +228,7 @@ class Nocobase {
                   .map((field) => {
                     return {
                       name: field.name,
-                      title: field.name,
+                      title: field.uiSchema!.title,
                       in: "body",
                       schema: {
                         type: "string",

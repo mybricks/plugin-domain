@@ -74,7 +74,7 @@ class DomainModelExecutor {
     });
   }
 
-  async call(options: CallOptions, pipeline: Pipeline) {
+  call(options: CallOptions, pipeline: Pipeline) {
     const { model, params, configs } = options;
     const { callType, autoCallOnce = true } = configs;
     const { defId, service } = model;
