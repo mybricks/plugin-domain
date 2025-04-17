@@ -74,7 +74,7 @@ const Render = (props: RenderProps) => {
               if (result) {
                 if (conetxt.current.type === "create") {
                   props.data.domainModels.push({
-                    id: conetxt.current.id,
+                    id: uuid(),
                     type: "nocobase",
                     connect: {
                       baseURL: conetxt.current.baseURL,
@@ -83,7 +83,7 @@ const Render = (props: RenderProps) => {
                   });
                 } else {
                   props.data.domainModels[0] = {
-                    id: uuid(),
+                    id: conetxt.current.id,
                     type: "nocobase",
                     connect: {
                       baseURL: conetxt.current.baseURL,
