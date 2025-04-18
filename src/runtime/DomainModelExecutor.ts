@@ -48,9 +48,11 @@ type Service = Record<
       pipeline: Pipeline;
       call: (newParams: Any) => void;
       destroy: () => void;
-      params: CallOptions["params"];
       model: CallOptions["model"];
       configs: CallOptions["configs"];
+      _cache: {
+        params: CallOptions["params"];
+      };
     }>;
     service: CallOptions["model"]["service"];
   }
@@ -76,7 +78,11 @@ class DomainModelExecutor {
 
   call(options: CallOptions, pipeline: Pipeline) {
     const { model, params, configs } = options;
-    const { callType, autoCallOnce = true } = configs;
+    const {
+      callType = "call",
+      autoCallOnce = true,
+      registerMode = "selfCall",
+    } = configs;
     const { defId, service } = model;
     const domainModel = this._domainModelMap[defId.split(".")[0]];
 
@@ -88,8 +94,25 @@ class DomainModelExecutor {
     const registration = {
       pipeline,
       call: (newParams: Any) => {
+        if (!domainModel) {
+          pipeline(new Error(`未查询到相应的领域模型 - ${defId}`), false);
+          return;
+        }
+        _service.value = EmptyValue;
+
+        if (service.method === "get") {
+          // [TEMP] get只需要触发注册类型为静态数据推送的pipeline
+          _service.registrations.forEach((serviceRegistration) => {
+            if (serviceRegistration.call !== registration.call) {
+              if (serviceRegistration.configs.registerMode === "staticPush") {
+                serviceRegistration.pipeline(null, true);
+              }
+            }
+          });
+        }
+
         // [TODO] configs.next 防止循环调用，验证下，是否会出现死循环
-        registration.params = newParams;
+        registration._cache.params = newParams;
         if (domainModel.type === "nocobase") {
           let url = domainModel.connect.baseURL + service.name;
           const params: Record<string, Any> = {};
@@ -131,7 +154,7 @@ class DomainModelExecutor {
             .then((result) => {
               pipeline(null, false, result.data);
               if (service.method === "post") {
-                // 认为post请求均为修改，修改后，刷新需要调用的get
+                // [TEMP] 所有post均认为是update，执行完成后调用所有get调用
                 const _instance = this.getOrCreateInstance(model.id);
                 Object.entries(_instance.service).forEach(
                   ([, { service, registrations }]) => {
@@ -141,17 +164,16 @@ class DomainModelExecutor {
                           serviceRegistration.configs.registerMode ===
                           "selfCall"
                         ) {
-                          serviceRegistration.call(serviceRegistration.params);
+                          serviceRegistration.call(
+                            serviceRegistration._cache.params,
+                          );
                         }
                       });
                     }
                   },
                 );
-              } else if (model.service.method === "get") {
-                const _service = this.getOrCreateService(
-                  this.getOrCreateInstance(model.id),
-                  model.service,
-                );
+              } else if (service.method === "get") {
+                // [TEMP] get只需要触发注册类型为静态数据推送的pipeline
                 _service.value = result.data;
                 _service.registrations.forEach((serviceRegistration) => {
                   if (serviceRegistration.call !== registration.call) {
@@ -159,10 +181,6 @@ class DomainModelExecutor {
                       serviceRegistration.configs.registerMode === "staticPush"
                     ) {
                       serviceRegistration.pipeline(null, false, result.data);
-                    } else if (
-                      serviceRegistration.configs.registerMode === "selfCall"
-                    ) {
-                      serviceRegistration.call(serviceRegistration.params);
                     }
                   }
                 });
@@ -176,15 +194,17 @@ class DomainModelExecutor {
       destroy: () => {
         _service.registrations.delete(registration);
       },
-      params,
       model,
       configs,
+      _cache: {
+        params,
+      },
     };
 
     if (callType === "register") {
       // 注册
       _service.registrations.add(registration);
-      if (_service.value !== EmptyValue) {
+      if (registerMode === "staticPush" && _service.value !== EmptyValue) {
         pipeline(null, false, _service.value);
       }
     }

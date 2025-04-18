@@ -23,6 +23,7 @@ const Render = (props: RenderProps) => {
       props.data.domainModels[0] &&
       props.data.domainModels[0].type === "nocobase"
     ) {
+      conetxt.current.id = props.data.domainModels[0].id;
       conetxt.current.baseURL = props.data.domainModels[0].connect.baseURL;
       conetxt.current.token = props.data.domainModels[0].connect.token;
       conetxt.current.type = "update";
