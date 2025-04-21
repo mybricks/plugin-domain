@@ -32,8 +32,15 @@ type Collections = {
 /** 字段列表 */
 type Fields = {
   name: string;
+  /**
+   * true - 不展示的字段
+   */
+  hidden?: boolean;
   uiSchema?: {
     title: string;
+    /**
+     * true - 不参与表单提交
+     */
     "x-read-pretty"?: boolean;
   };
 }[];
@@ -72,16 +79,18 @@ class Nocobase {
             return field;
           });
 
-        const recordProperties = fields.reduce<Record<string, Schema>>(
-          (pre, cur) => {
+        const recordProperties = fields
+          .filter((field) => {
+            return !field.hidden;
+          })
+          .reduce<Record<string, Schema>>((pre, cur) => {
+            // [TODO] 这里要缓存一个对象，完成遍历后再给这个对象赋值
             pre[cur.name] = {
               type: "string",
               title: cur.uiSchema!.title,
             };
             return pre;
-          },
-          {},
-        );
+          }, {});
 
         domainModels[index] = {
           id: collection.name,
@@ -160,6 +169,7 @@ class Nocobase {
                   name: "filterByTk",
                   title: "filterByTk",
                   in: "query",
+                  hidden: true,
                   schema: {
                     type: "number",
                   },
@@ -215,6 +225,7 @@ class Nocobase {
                   name: "filterByTk",
                   title: "filterByTk",
                   in: "query",
+                  hidden: true,
                   schema: {
                     type: "number",
                   },
@@ -256,6 +267,7 @@ class Nocobase {
                   name: "filterByTk",
                   title: "filterByTk",
                   in: "query",
+                  hidden: true,
                   schema: {
                     type: "number",
                   },

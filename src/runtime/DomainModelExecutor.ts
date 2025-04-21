@@ -59,6 +59,7 @@ type Service = Record<
 >;
 
 type Instance = {
+  value: Any;
   service: Service;
 };
 
@@ -86,10 +87,8 @@ class DomainModelExecutor {
     const { defId, service } = model;
     const domainModel = this._domainModelMap[defId.split(".")[0]];
 
-    const _service = this.getOrCreateService(
-      this.getOrCreateInstance(model.id),
-      model.service,
-    );
+    const _instance = this.getOrCreateInstance(model.id);
+    const _service = this.getOrCreateService(_instance, model.service);
 
     const registration = {
       pipeline,
@@ -98,17 +97,28 @@ class DomainModelExecutor {
           pipeline(new Error(`未查询到相应的领域模型 - ${defId}`), false);
           return;
         }
+        _instance.value = EmptyValue;
         _service.value = EmptyValue;
 
         if (service.method === "get") {
-          // [TEMP] get只需要触发注册类型为静态数据推送的pipeline
-          _service.registrations.forEach((serviceRegistration) => {
-            if (serviceRegistration.call !== registration.call) {
-              if (serviceRegistration.configs.registerMode === "staticPush") {
-                serviceRegistration.pipeline(null, true);
+          // [TEMP] 触发所有静态数据推送的pipeline（前提是不会同时处理两条数据
+          Object.entries(_instance.service).forEach(([, { registrations }]) => {
+            registrations.forEach((serviceRegistration) => {
+              if (serviceRegistration.call !== registration.call) {
+                if (serviceRegistration.configs.registerMode === "staticPush") {
+                  serviceRegistration.pipeline(null, true);
+                }
               }
-            }
+            });
           });
+          // [TEMP] get只需要触发注册类型为静态数据推送的pipeline
+          // _service.registrations.forEach((serviceRegistration) => {
+          //   if (serviceRegistration.call !== registration.call) {
+          //     if (serviceRegistration.configs.registerMode === "staticPush") {
+          //       serviceRegistration.pipeline(null, true);
+          //     }
+          //   }
+          // });
         }
 
         // [TODO] configs.next 防止循环调用，验证下，是否会出现死循环
@@ -155,7 +165,6 @@ class DomainModelExecutor {
               pipeline(null, false, result.data);
               if (service.method === "post") {
                 // [TEMP] 所有post均认为是update，执行完成后调用所有get调用
-                const _instance = this.getOrCreateInstance(model.id);
                 Object.entries(_instance.service).forEach(
                   ([, { service, registrations }]) => {
                     if (service.method === "get") {
@@ -173,17 +182,39 @@ class DomainModelExecutor {
                   },
                 );
               } else if (service.method === "get") {
-                // [TEMP] get只需要触发注册类型为静态数据推送的pipeline
+                _instance.value = result.data;
                 _service.value = result.data;
-                _service.registrations.forEach((serviceRegistration) => {
-                  if (serviceRegistration.call !== registration.call) {
-                    if (
-                      serviceRegistration.configs.registerMode === "staticPush"
-                    ) {
-                      serviceRegistration.pipeline(null, false, result.data);
-                    }
-                  }
-                });
+
+                // [TEMP] 触发所有静态数据推送的pipeline（前提是不会同时处理两条数据
+                Object.entries(_instance.service).forEach(
+                  ([, { registrations }]) => {
+                    registrations.forEach((serviceRegistration) => {
+                      if (serviceRegistration.call !== registration.call) {
+                        if (
+                          serviceRegistration.configs.registerMode ===
+                          "staticPush"
+                        ) {
+                          serviceRegistration.pipeline(
+                            null,
+                            false,
+                            result.data,
+                          );
+                        }
+                      }
+                    });
+                  },
+                );
+
+                // [TEMP] get只需要触发注册类型为静态数据推送的pipeline
+                // _service.registrations.forEach((serviceRegistration) => {
+                //   if (serviceRegistration.call !== registration.call) {
+                //     if (
+                //       serviceRegistration.configs.registerMode === "staticPush"
+                //     ) {
+                //       serviceRegistration.pipeline(null, false, result.data);
+                //     }
+                //   }
+                // });
               }
             })
             .catch((error) => {
@@ -204,8 +235,8 @@ class DomainModelExecutor {
     if (callType === "register") {
       // 注册
       _service.registrations.add(registration);
-      if (registerMode === "staticPush" && _service.value !== EmptyValue) {
-        pipeline(null, false, _service.value);
+      if (registerMode === "staticPush" && _instance.value !== EmptyValue) {
+        pipeline(null, false, _instance.value);
       }
     }
 
@@ -221,6 +252,7 @@ class DomainModelExecutor {
   private getOrCreateInstance(instanceId: string) {
     if (!this._instanceMap[instanceId]) {
       this._instanceMap[instanceId] = {
+        value: EmptyValue,
         service: {},
       };
     }

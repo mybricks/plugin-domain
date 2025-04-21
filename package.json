@@ -1,6 +1,6 @@
 {
   "name": "@mybricks/plugin-domain",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "领域模型插件",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
