@@ -2,6 +2,7 @@ import React from "react";
 import Render from "./components/Render";
 import { pluginIcon } from "./components/Icon";
 import Nocobase, { DomainModelNocobase } from "./nocobase";
+import DomainModelExecutor from "./runtime/DomainModelExecutor";
 
 type TabRenderParams = {
   data: Data;
@@ -28,6 +29,8 @@ type ToJSONParams = {
 };
 
 const domainPlugin = () => {
+  let domainModelExecutor = null as unknown as DomainModelExecutor;
+
   return {
     name: "@mybricks/plugin-domain",
     title: "领域模型",
@@ -95,7 +98,11 @@ const domainPlugin = () => {
       };
     },
     toJSON(params: ToJSONParams) {
+      domainModelExecutor = new DomainModelExecutor(params.data);
       return params.data;
+    },
+    callDomainModel(...args: Parameters<typeof domainModelExecutor.call>) {
+      return domainModelExecutor.call(...args);
     },
   };
 };
