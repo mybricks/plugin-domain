@@ -78,11 +78,11 @@ class DomainModelExecutor {
   }
 
   call(options: CallOptions, pipeline: Pipeline) {
-    const { model, params, configs } = options;
+    const { model, params, configs = {} as CallOptions["configs"] } = options;
     const {
       callType = "call",
       autoCallOnce = true,
-      registerMode = "selfCall",
+      // registerMode = "selfCall",
     } = configs;
     const { defId, service } = model;
     const domainModel = this._domainModelMap[defId.split(".")[0]];
@@ -97,29 +97,29 @@ class DomainModelExecutor {
           pipeline(new Error(`未查询到相应的领域模型 - ${defId}`), false);
           return;
         }
-        _instance.value = EmptyValue;
-        _service.value = EmptyValue;
+        // _instance.value = EmptyValue;
+        // _service.value = EmptyValue;
 
-        if (service.method === "get") {
-          // [TEMP] 触发所有静态数据推送的pipeline（前提是不会同时处理两条数据
-          Object.entries(_instance.service).forEach(([, { registrations }]) => {
-            registrations.forEach((serviceRegistration) => {
-              if (serviceRegistration.call !== registration.call) {
-                if (serviceRegistration.configs.registerMode === "staticPush") {
-                  serviceRegistration.pipeline(null, true);
-                }
-              }
-            });
-          });
-          // [TEMP] get只需要触发注册类型为静态数据推送的pipeline
-          // _service.registrations.forEach((serviceRegistration) => {
-          //   if (serviceRegistration.call !== registration.call) {
-          //     if (serviceRegistration.configs.registerMode === "staticPush") {
-          //       serviceRegistration.pipeline(null, true);
-          //     }
-          //   }
-          // });
-        }
+        // if (service.method === "get") {
+        //   // [TEMP] 触发所有静态数据推送的pipeline（前提是不会同时处理两条数据
+        //   Object.entries(_instance.service).forEach(([, { registrations }]) => {
+        //     registrations.forEach((serviceRegistration) => {
+        //       if (serviceRegistration.call !== registration.call) {
+        //         if (serviceRegistration.configs.registerMode === "staticPush") {
+        //           serviceRegistration.pipeline(null, true);
+        //         }
+        //       }
+        //     });
+        //   });
+        //   // [TEMP] get只需要触发注册类型为静态数据推送的pipeline
+        //   // _service.registrations.forEach((serviceRegistration) => {
+        //   //   if (serviceRegistration.call !== registration.call) {
+        //   //     if (serviceRegistration.configs.registerMode === "staticPush") {
+        //   //       serviceRegistration.pipeline(null, true);
+        //   //     }
+        //   //   }
+        //   // });
+        // }
 
         // [TODO] configs.next 防止循环调用，验证下，是否会出现死循环
         registration._cache.params = newParams;
@@ -132,24 +132,21 @@ class DomainModelExecutor {
           };
 
           const newParamsKeySet = new Set(Object.keys(newParams));
-          service.params.forEach(({ name, in: po }) => {
-            if (name === "filterByTk") {
-              params[name] = newParams[name] || newParams["id"];
-              newParamsKeySet.delete("id");
-              newParamsKeySet.delete("filterByTk");
-            } else {
+          service.params.forEach(
+            ({ name, in: po, ["x-replace-name"]: xReplaceName }) => {
+              const key = xReplaceName || name;
               if (po === "body") {
-                data[name] = newParams[name];
+                data[key] = newParams[name];
               } else if (po === "path") {
-                url = url.replace(`{${name}}`, newParams[name]);
+                url = url.replace(`{${key}}`, newParams[name]);
               } else if (po === "query") {
-                params[name] = newParams[name];
+                params[key] = newParams[name];
               } else if (po === "header") {
-                headers[name] = newParams[name];
+                headers[key] = newParams[name];
               }
               newParamsKeySet.delete(name);
-            }
-          });
+            },
+          );
 
           pipeline(null, true);
 
@@ -182,29 +179,27 @@ class DomainModelExecutor {
                   },
                 );
               } else if (service.method === "get") {
-                _instance.value = result.data;
-                _service.value = result.data;
-
+                // _instance.value = result.data;
+                // _service.value = result.data;
                 // [TEMP] 触发所有静态数据推送的pipeline（前提是不会同时处理两条数据
-                Object.entries(_instance.service).forEach(
-                  ([, { registrations }]) => {
-                    registrations.forEach((serviceRegistration) => {
-                      if (serviceRegistration.call !== registration.call) {
-                        if (
-                          serviceRegistration.configs.registerMode ===
-                          "staticPush"
-                        ) {
-                          serviceRegistration.pipeline(
-                            null,
-                            false,
-                            result.data,
-                          );
-                        }
-                      }
-                    });
-                  },
-                );
-
+                // Object.entries(_instance.service).forEach(
+                //   ([, { registrations }]) => {
+                //     registrations.forEach((serviceRegistration) => {
+                //       if (serviceRegistration.call !== registration.call) {
+                //         if (
+                //           serviceRegistration.configs.registerMode ===
+                //           "staticPush"
+                //         ) {
+                //           serviceRegistration.pipeline(
+                //             null,
+                //             false,
+                //             result.data,
+                //           );
+                //         }
+                //       }
+                //     });
+                //   },
+                // );
                 // [TEMP] get只需要触发注册类型为静态数据推送的pipeline
                 // _service.registrations.forEach((serviceRegistration) => {
                 //   if (serviceRegistration.call !== registration.call) {
@@ -235,9 +230,9 @@ class DomainModelExecutor {
     if (callType === "register") {
       // 注册
       _service.registrations.add(registration);
-      if (registerMode === "staticPush" && _instance.value !== EmptyValue) {
-        pipeline(null, false, _instance.value);
-      }
+      // if (registerMode === "staticPush" && _instance.value !== EmptyValue) {
+      //   pipeline(null, false, _instance.value);
+      // }
     }
 
     if (autoCallOnce) {

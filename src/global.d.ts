@@ -25,9 +25,12 @@ type DomainModel = {
       name: string;
       title: string;
       in: "path" | "query" | "header" | "body";
-      /** 隐藏 - [TODO] 声明不可编辑，表单容器做判断，展示只读？ */
-      hidden?: boolean;
       schema: Schema;
+
+      /** 声明只读 */
+      ["x-read-only"]?: boolean;
+      /** 替换name */
+      ["x-replace-name"]?: string;
     }[];
     responses: Schema;
   }[];

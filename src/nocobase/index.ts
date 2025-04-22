@@ -166,13 +166,14 @@ class Nocobase {
               method: "get",
               params: [
                 {
-                  name: "filterByTk",
-                  title: "filterByTk",
+                  name: "id",
+                  title: "ID",
                   in: "query",
-                  hidden: true,
                   schema: {
                     type: "number",
                   },
+                  ["x-read-only"]: true,
+                  ["x-replace-name"]: "filterByTk",
                 },
               ],
               responses: {
@@ -222,13 +223,14 @@ class Nocobase {
               method: "post",
               params: [
                 {
-                  name: "filterByTk",
-                  title: "filterByTk",
+                  name: "id",
+                  title: "ID",
                   in: "query",
-                  hidden: true,
                   schema: {
                     type: "number",
                   },
+                  ["x-read-only"]: true,
+                  ["x-replace-name"]: "filterByTk",
                 } as DomainModel["services"][0]["params"][0],
               ].concat(
                 fields
@@ -264,13 +266,14 @@ class Nocobase {
               method: "post",
               params: [
                 {
-                  name: "filterByTk",
-                  title: "filterByTk",
+                  name: "id",
+                  title: "ID",
                   in: "query",
-                  hidden: true,
                   schema: {
                     type: "number",
                   },
+                  ["x-read-only"]: true,
+                  ["x-replace-name"]: "filterByTk",
                 },
               ],
               responses: {
