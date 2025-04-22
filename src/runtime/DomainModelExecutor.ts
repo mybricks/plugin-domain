@@ -78,12 +78,16 @@ class DomainModelExecutor {
   }
 
   call(options: CallOptions, pipeline: Pipeline) {
-    const { model, params, configs = {} as CallOptions["configs"] } = options;
-    const {
-      callType = "call",
-      autoCallOnce = true,
-      // registerMode = "selfCall",
-    } = configs;
+    const { model, params } = options;
+    const configs = Object.assign(
+      {
+        callType: "call",
+        autoCallOnce: true,
+        registerMode: "selfCall",
+      },
+      options.configs || {},
+    );
+    const { callType, autoCallOnce } = configs;
     const { defId, service } = model;
     const domainModel = this._domainModelMap[defId.split(".")[0]];
 
