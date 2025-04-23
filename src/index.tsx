@@ -1,8 +1,10 @@
 import React from "react";
+import context from "./context";
 import Render from "./components/Render";
 import { pluginIcon } from "./components/Icon";
-import Nocobase, { DomainModelNocobase } from "./nocobase";
 import DomainModelExecutor from "./runtime/DomainModelExecutor";
+import { getDomainModels as getNocobaseDomainModels } from "./nocobase";
+import type { DomainModelNocobase } from "./nocobase";
 
 type TabRenderParams = {
   data: Data;
@@ -59,40 +61,30 @@ const domainPlugin = () => {
       },
     },
     onLoad(params: OnLoadParams) {
-      // [TODO] 后面多个领域模型后，再改
-      const _cache: {
-        domainModel?: DomainModel[];
-      } = {};
       params.domainModel.getAll = async () => {
-        if (_cache.domainModel) {
-          return _cache.domainModel;
-        }
         const domainModels: DomainModel[] = [];
 
         await Promise.all(
           params.data.domainModels.map(async (domainModel) => {
-            if (domainModel.type === "nocobase") {
-              const { id, connect } = domainModel;
-              const nocobase = new Nocobase({
-                ...connect,
-                storagePrefix: `NOCOBASE_${id}_`,
-              });
-              const domainModelNocobases = await nocobase.getDomainModels();
-              domainModels.push(
-                ...domainModelNocobases.map((domainModel) => {
-                  return {
-                    ...domainModel,
-                    id: `${id}.${domainModel.id}`,
-                  };
-                }),
-              );
+            const cacheDomainModels = context.cache.getDomainModels(
+              domainModel.id,
+            );
+            if (cacheDomainModels) {
+              // 读缓存
+              domainModels.push(...cacheDomainModels);
+            } else {
+              if (domainModel.type === "nocobase") {
+                const nocobaseDomainModels =
+                  await getNocobaseDomainModels(domainModel);
+                context.cache.setDomainModels(
+                  domainModel.id,
+                  nocobaseDomainModels,
+                );
+                domainModels.push(...nocobaseDomainModels);
+              }
             }
           }),
         );
-
-        if (domainModels.length) {
-          _cache.domainModel = domainModels;
-        }
 
         return domainModels;
       };

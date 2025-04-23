@@ -1,7 +1,7 @@
 import { asyncTryCatch } from "@luckybytes/utils";
-import { DomainModelNocobase } from "./type";
 import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
 import { getLocaleText } from "./locale";
+import type { DomainModelNocobase } from "./type";
 
 type Axios<R = unknown> = (
   config: AxiosRequestConfig<unknown>,
@@ -314,6 +314,21 @@ class Nocobase {
   }
 }
 
+const getDomainModels = async (domainModel: DomainModelNocobase) => {
+  const { id, connect } = domainModel;
+  const nocobase = new Nocobase(connect);
+  const domainModelNocobases = await nocobase.getDomainModels();
+
+  return domainModelNocobases.map((domainModel) => {
+    return {
+      ...domainModel,
+      id: `${id}.${domainModel.id}`,
+    };
+  });
+};
+
 export default Nocobase;
+
+export { getDomainModels };
 
 export type { DomainModelNocobase };
