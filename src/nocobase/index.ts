@@ -1,49 +1,12 @@
 import { asyncTryCatch } from "@luckybytes/utils";
 import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
 import { getLocaleText } from "./locale";
-import type { DomainModelNocobase } from "./type";
+import { fieldConvert } from "./utils";
+import type { DomainModelNocobase, Connect, Collections } from "./type";
 
 type Axios<R = unknown> = (
   config: AxiosRequestConfig<unknown>,
 ) => Promise<AxiosResponse<{ data: R }, Any>>;
-
-type Connect = DomainModelNocobase["connect"] & {
-  [key: string]: Any;
-};
-
-/**
- * TODO
- * 1. schema映射为mybricks规范，目前默认全是string
- * 2. 逐步补充可用的params
- * 3. 失败 {"errors":[{"message":"ID must be unique"}]}
- */
-
-/** 数据源 */
-type Collections = {
-  name: string;
-  title: string;
-  fields: Fields;
-  /**
-   * true - 不展示的表
-   */
-  hidden: boolean;
-}[];
-
-/** 字段列表 */
-type Fields = {
-  name: string;
-  /**
-   * true - 不展示的字段
-   */
-  hidden?: boolean;
-  uiSchema?: {
-    title: string;
-    /**
-     * true - 不参与表单提交
-     */
-    "x-read-pretty"?: boolean;
-  };
-}[];
 
 class Nocobase {
   constructor(private _connect: Connect) {}
@@ -74,9 +37,7 @@ class Nocobase {
             return field.uiSchema;
           })
           .map((field) => {
-            field.uiSchema!.title =
-              getLocaleText(field.uiSchema!.title) || field.name;
-            return field;
+            return fieldConvert(field);
           });
 
         const recordProperties = fields
@@ -84,9 +45,8 @@ class Nocobase {
             return !field.hidden;
           })
           .reduce<Record<string, Schema>>((pre, cur) => {
-            // [TODO] 这里要缓存一个对象，完成遍历后再给这个对象赋值
             pre[cur.name] = {
-              type: "string",
+              type: cur.uiSchema!.type,
               title: cur.uiSchema!.title,
             };
             return pre;
@@ -100,7 +60,7 @@ class Nocobase {
               name: field.name,
               title: field.uiSchema!.title,
               schema: {
-                type: "string",
+                type: field.uiSchema!.type,
               },
             };
           }),
@@ -202,7 +162,11 @@ class Nocobase {
                     title: field.uiSchema!.title,
                     in: "body",
                     schema: {
-                      type: "string",
+                      type: field.uiSchema!.type,
+                    },
+                    uiSchema: {
+                      component: field.uiSchema!["x-component"],
+                      validator: field.uiSchema!["x-validator"],
                     },
                   };
                 }),
@@ -235,7 +199,7 @@ class Nocobase {
               ].concat(
                 fields
                   .filter((filed) => {
-                    // 目前根据数据结构分析如下判断为主外键字段以及系统字段，不需要在更新时传递
+                    // 目前根据数据结构分析如下判断为主外键字段以及系统字段，不需要在创建时传递
                     return !filed.uiSchema!["x-read-pretty"];
                   })
                   .map((field) => {
@@ -244,7 +208,11 @@ class Nocobase {
                       title: field.uiSchema!.title,
                       in: "body",
                       schema: {
-                        type: "string",
+                        type: field.uiSchema!.type,
+                      },
+                      uiSchema: {
+                        component: field.uiSchema!["x-component"],
+                        validator: field.uiSchema!["x-validator"],
                       },
                     };
                   }),
