@@ -55,15 +55,19 @@ class Nocobase {
         domainModels[index] = {
           id: collection.name,
           title: getLocaleText(collection.title) || collection.name,
-          fields: fields.map((field) => {
-            return {
-              name: field.name,
-              title: field.uiSchema!.title,
-              schema: {
-                type: field.uiSchema!.type,
-              },
-            };
-          }),
+          fields: fields
+            .filter((field) => {
+              return !field.hidden;
+            })
+            .map((field) => {
+              return {
+                name: field.name,
+                title: field.uiSchema!.title,
+                schema: {
+                  type: field.uiSchema!.type,
+                },
+              };
+            }),
           services: [
             // list
             {
