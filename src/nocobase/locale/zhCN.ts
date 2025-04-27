@@ -1,5 +1,6 @@
 // 默认值
 const zhCN = {
+  Main: "主数据源",
   // 默认表
   Roles: "角色",
   Users: "用户",

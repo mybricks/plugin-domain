@@ -54,9 +54,6 @@ const getDomainModels = async (domainModel: DomainModelNocobase) => {
         .filter(({ hidden }) => !hidden)
         .map(async (collection) => {
           const fields = collection.fields
-            .sort((a, b) => {
-              return a.__sort > b.__sort ? 1 : -1;
-            })
             .filter((field) => {
               return field.uiSchema;
             })
@@ -65,9 +62,6 @@ const getDomainModels = async (domainModel: DomainModelNocobase) => {
             });
 
           const recordProperties = fields
-            .sort((a, b) => {
-              return a.__sort > b.__sort ? 1 : -1;
-            })
             .filter((field) => {
               return !field.hidden;
             })
@@ -290,7 +284,7 @@ const getDomainModels = async (domainModel: DomainModelNocobase) => {
 
       domainModels[index] = {
         id: dataSource.key,
-        title: dataSource.displayName || dataSource.key,
+        title: getLocaleText(dataSource.displayName || dataSource.key),
         domainAry,
       };
     }),
@@ -340,7 +334,6 @@ const getCollectionList = async (
     withCredentials: false,
     params: {
       paginate: false,
-      // sort: ["sort"],
       appends: ["fields", "category"],
       filter: JSON.stringify({ hidden: { $isFalsy: true } }),
     },
@@ -351,9 +344,18 @@ const getCollectionList = async (
     return [];
   }
 
-  return success.data.data.sort((a, b) => {
-    return a.sort > b.sort ? 1 : -1;
-  });
+  return success.data.data
+    .sort((a, b) => {
+      return a.sort > b.sort ? 1 : -1;
+    })
+    .map((collection) => {
+      return {
+        ...collection,
+        fields: collection.fields.sort((a, b) => {
+          return a.__sort > b.__sort ? 1 : -1;
+        }),
+      };
+    });
 };
 
 export default Nocobase;
