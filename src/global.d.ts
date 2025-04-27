@@ -8,30 +8,33 @@ type Any = any;
 
 type Schema = Any;
 
-/** 领域模型 */
+/** 领域模型，MyBricks引擎接收的数据格式 */
 type DomainModel = {
   id: string;
   title: string;
-  fields: {
-    name: string;
+  domainAry: {
+    id: string;
     title: string;
-    schema: Schema;
-  }[];
-  services: {
-    name: string;
-    title: string;
-    method: "get" | "post";
-    params: {
+    fields: {
       name: string;
       title: string;
-      in: "path" | "query" | "header" | "body";
       schema: Schema;
-
-      /** 声明只读 */
-      ["x-read-only"]?: boolean;
-      /** 替换name */
-      ["x-replace-name"]?: string;
     }[];
-    responses: Schema;
+    services: {
+      name: string;
+      title: string;
+      method: "get" | "post";
+      params: {
+        name: string;
+        title: string;
+        in: "path" | "query" | "header" | "body";
+        schema: Schema;
+        /** 声明只读 */
+        ["x-read-only"]?: boolean;
+        /** 替换name */
+        ["x-replace-name"]?: string;
+      }[];
+      responses: Schema;
+    }[];
   }[];
 };

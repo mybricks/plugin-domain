@@ -21,6 +21,8 @@ export type Collections = {
    * true - 不展示的表
    */
   hidden: boolean;
+  /** 排序 */
+  sort: number;
 }[];
 
 /** 字段列表 */
@@ -43,4 +45,12 @@ export type Fields = {
      */
     "x-read-pretty"?: boolean;
   };
+  /** 排序 */
+  __sort: number;
 }[];
+
+/**
+ * nocobase接口小技巧
+ *
+ * paginate: false; 关闭分页
+ */

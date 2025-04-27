@@ -11,197 +11,178 @@ type Axios<R = unknown> = (
 class Nocobase {
   constructor(private _connect: Connect) {}
 
-  async getDomainModels() {
-    const domainModels: DomainModel[] = [];
+  /** 鉴权 */
+  async authCheck() {
+    return await authCheck(this._connect);
+  }
+}
 
-    // 仅获取所有主数据源
-    const [error, success] = await asyncTryCatch(axios as Axios<Collections>, {
-      url: `${this._connect.baseURL}/collections:listMeta`,
-      method: "get",
-      headers: {
-        authorization: `Bearer ${this._connect.token}`,
-      },
-      withCredentials: false,
-    });
+/** 鉴权 */
+const authCheck = async (connect: DomainModelNocobase["connect"]) => {
+  /** 验证token是否过期 */
+  const [error, checkSuccess] = await asyncTryCatch(axios as Axios, {
+    url: `${connect.baseURL}/auth:check`,
+    method: "get",
+    headers: {
+      authorization: `Bearer ${connect.token}`,
+    },
+    withCredentials: false,
+  });
 
-    if (error) {
-      console.error(`[nocobase - /collections:listMeta] ${error}`);
-      return [];
-    }
+  if (checkSuccess) {
+    return true;
+  }
 
-    success.data.data
-      .filter(({ hidden }) => !hidden)
-      .map(async (collection, index) => {
-        const fields = collection.fields
-          .filter((field) => {
-            return field.uiSchema;
-          })
-          .map((field) => {
-            return fieldConvert(field);
-          });
+  console.error(`[nocobase - /auth:check] ${error}`);
 
-        const recordProperties = fields
-          .filter((field) => {
-            return !field.hidden;
-          })
-          .reduce<Record<string, Schema>>((pre, cur) => {
-            pre[cur.name] = {
-              type: cur.uiSchema!.type,
-              title: cur.uiSchema!.title,
-            };
-            return pre;
-          }, {});
+  return false;
+};
 
-        domainModels[index] = {
-          id: collection.name,
-          title: getLocaleText(collection.title) || collection.name,
-          fields: fields
+/** 获取领域模型列表 */
+const getDomainModels = async (domainModel: DomainModelNocobase) => {
+  const { id, connect } = domainModel;
+  // const domainModels: DomainModel[] = [];
+  // 获取数据源列表
+  const dataSourceList = await getDataSourceList(connect);
+  const domainModels: DomainModel[] = [];
+
+  await Promise.all(
+    dataSourceList.map(async (dataSource, index) => {
+      const domainAry: DomainModel["domainAry"] = [];
+      const collectionList = await getCollectionList(connect, dataSource);
+      collectionList
+        .filter(({ hidden }) => !hidden)
+        .map(async (collection) => {
+          const fields = collection.fields
+            .sort((a, b) => {
+              return a.__sort > b.__sort ? 1 : -1;
+            })
+            .filter((field) => {
+              return field.uiSchema;
+            })
+            .map((field) => {
+              return fieldConvert(field);
+            });
+
+          const recordProperties = fields
+            .sort((a, b) => {
+              return a.__sort > b.__sort ? 1 : -1;
+            })
             .filter((field) => {
               return !field.hidden;
             })
-            .map((field) => {
-              return {
-                name: field.name,
-                title: field.uiSchema!.title,
-                schema: {
-                  type: field.uiSchema!.type,
-                },
+            .reduce<Record<string, Schema>>((pre, cur) => {
+              pre[cur.name] = {
+                type: cur.uiSchema!.type,
+                title: cur.uiSchema!.title,
               };
-            }),
-          services: [
-            // list
-            {
-              name: `/${collection.name}:list`,
-              title: `/${collection.name}:list`,
-              method: "get",
-              params: [
-                {
-                  name: "pageSize",
-                  title: "pageSize",
-                  in: "query",
+              return pre;
+            }, {});
+
+          domainAry.push({
+            id: `${id}.${collection.name}`,
+            title: getLocaleText(collection.title) || collection.name,
+            fields: fields
+              .filter((field) => {
+                return !field.hidden;
+              })
+              .map((field) => {
+                return {
+                  name: field.name,
+                  title: field.uiSchema!.title,
                   schema: {
-                    type: "number",
+                    type: field.uiSchema!.type,
                   },
-                },
-                {
-                  name: "page",
-                  title: "page",
-                  in: "query",
-                  schema: {
-                    type: "number",
+                };
+              }),
+            services: [
+              // list
+              {
+                name: `/${collection.name}:list`,
+                title: `/${collection.name}:list`,
+                method: "get",
+                params: [
+                  {
+                    name: "pageSize",
+                    title: "pageSize",
+                    in: "query",
+                    schema: {
+                      type: "number",
+                    },
                   },
+                  {
+                    name: "page",
+                    title: "page",
+                    in: "query",
+                    schema: {
+                      type: "number",
+                    },
+                  },
+                ],
+                responses: {
+                  type: "object",
+                  properties: {
+                    data: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: recordProperties,
+                      },
+                    },
+                    meta: {
+                      type: "object",
+                      properties: {
+                        count: {
+                          type: "number",
+                        },
+                        page: {
+                          type: "number",
+                        },
+                        pageSize: {
+                          type: "number",
+                        },
+                        totalPage: {
+                          type: "number",
+                        },
+                      },
+                    },
+                  },
+                  required: ["data"],
                 },
-              ],
-              responses: {
-                type: "object",
-                properties: {
-                  data: {
-                    type: "array",
-                    items: {
+              },
+              // get
+              {
+                name: `/${collection.name}:get`,
+                title: `/${collection.name}:get`,
+                method: "get",
+                params: [
+                  {
+                    name: "id",
+                    title: "ID",
+                    in: "query",
+                    schema: {
+                      type: "number",
+                    },
+                    ["x-read-only"]: true,
+                    ["x-replace-name"]: "filterByTk",
+                  },
+                ],
+                responses: {
+                  type: "object",
+                  properties: {
+                    data: {
                       type: "object",
                       properties: recordProperties,
                     },
                   },
-                  meta: {
-                    type: "object",
-                    properties: {
-                      count: {
-                        type: "number",
-                      },
-                      page: {
-                        type: "number",
-                      },
-                      pageSize: {
-                        type: "number",
-                      },
-                      totalPage: {
-                        type: "number",
-                      },
-                    },
-                  },
-                },
-                required: ["data"],
-              },
-            },
-            // get
-            {
-              name: `/${collection.name}:get`,
-              title: `/${collection.name}:get`,
-              method: "get",
-              params: [
-                {
-                  name: "id",
-                  title: "ID",
-                  in: "query",
-                  schema: {
-                    type: "number",
-                  },
-                  ["x-read-only"]: true,
-                  ["x-replace-name"]: "filterByTk",
-                },
-              ],
-              responses: {
-                type: "object",
-                properties: {
-                  data: {
-                    type: "object",
-                    properties: recordProperties,
-                  },
                 },
               },
-            },
-            // create
-            {
-              name: `/${collection.name}:create`,
-              title: `/${collection.name}:create`,
-              method: "post",
-              params: fields
-                .filter((filed) => {
-                  // 目前根据数据结构分析如下判断为主外键字段以及系统字段，不需要在创建时传递
-                  return !filed.uiSchema!["x-read-pretty"];
-                })
-                .map((field) => {
-                  return {
-                    name: field.name,
-                    title: field.uiSchema!.title,
-                    in: "body",
-                    schema: {
-                      type: field.uiSchema!.type,
-                    },
-                    uiSchema: {
-                      component: field.uiSchema!["x-component"],
-                      validator: field.uiSchema!["x-validator"],
-                    },
-                  };
-                }),
-              responses: {
-                type: "object",
-                properties: {
-                  data: {
-                    type: "object",
-                    properties: recordProperties,
-                  },
-                },
-              },
-            },
-            // update
-            {
-              name: `/${collection.name}:update`,
-              title: `/${collection.name}:update`,
-              method: "post",
-              params: [
-                {
-                  name: "id",
-                  title: "ID",
-                  in: "query",
-                  schema: {
-                    type: "number",
-                  },
-                  ["x-read-only"]: true,
-                  ["x-replace-name"]: "filterByTk",
-                } as DomainModel["services"][0]["params"][0],
-              ].concat(
-                fields
+              // create
+              {
+                name: `/${collection.name}:create`,
+                title: `/${collection.name}:create`,
+                method: "post",
+                params: fields
                   .filter((filed) => {
                     // 目前根据数据结构分析如下判断为主外键字段以及系统字段，不需要在创建时传递
                     return !filed.uiSchema!["x-read-pretty"];
@@ -220,87 +201,163 @@ class Nocobase {
                       },
                     };
                   }),
-              ),
-              responses: {
-                type: "object",
-                properties: {
-                  data: {
-                    type: "object",
-                    properties: recordProperties,
+                responses: {
+                  type: "object",
+                  properties: {
+                    data: {
+                      type: "object",
+                      properties: recordProperties,
+                    },
                   },
                 },
               },
-            },
-            // destroy
-            {
-              name: `/${collection.name}:destroy`,
-              title: `/${collection.name}:destroy`,
-              method: "post",
-              params: [
-                {
-                  name: "id",
-                  title: "ID",
-                  in: "query",
-                  schema: {
-                    type: "number",
-                  },
-                  ["x-read-only"]: true,
-                  ["x-replace-name"]: "filterByTk",
-                },
-              ],
-              responses: {
-                type: "object",
-                properties: {
-                  data: {
-                    enum: [0, 1],
+              // update
+              {
+                name: `/${collection.name}:update`,
+                title: `/${collection.name}:update`,
+                method: "post",
+                params: [
+                  {
+                    name: "id",
+                    title: "ID",
+                    in: "query",
+                    schema: {
+                      type: "number",
+                    },
+                    ["x-read-only"]: true,
+                    ["x-replace-name"]: "filterByTk",
+                  } as DomainModel["domainAry"][0]["services"][0]["params"][0],
+                ].concat(
+                  fields
+                    .filter((filed) => {
+                      // 目前根据数据结构分析如下判断为主外键字段以及系统字段，不需要在创建时传递
+                      return !filed.uiSchema!["x-read-pretty"];
+                    })
+                    .map((field) => {
+                      return {
+                        name: field.name,
+                        title: field.uiSchema!.title,
+                        in: "body",
+                        schema: {
+                          type: field.uiSchema!.type,
+                        },
+                        uiSchema: {
+                          component: field.uiSchema!["x-component"],
+                          validator: field.uiSchema!["x-validator"],
+                        },
+                      };
+                    }),
+                ),
+                responses: {
+                  type: "object",
+                  properties: {
+                    data: {
+                      type: "object",
+                      properties: recordProperties,
+                    },
                   },
                 },
               },
-            },
-          ],
-        };
-      });
+              // destroy
+              {
+                name: `/${collection.name}:destroy`,
+                title: `/${collection.name}:destroy`,
+                method: "post",
+                params: [
+                  {
+                    name: "id",
+                    title: "ID",
+                    in: "query",
+                    schema: {
+                      type: "number",
+                    },
+                    ["x-read-only"]: true,
+                    ["x-replace-name"]: "filterByTk",
+                  },
+                ],
+                responses: {
+                  type: "object",
+                  properties: {
+                    data: {
+                      enum: [0, 1],
+                    },
+                  },
+                },
+              },
+            ],
+          });
+        });
 
-    return domainModels;
+      domainModels[index] = {
+        id: dataSource.key,
+        title: dataSource.displayName || dataSource.key,
+        domainAry,
+      };
+    }),
+  );
+
+  return domainModels;
+};
+
+type DataSource = {
+  key: string;
+  displayName: string;
+};
+
+/** 获取数据源列表 */
+const getDataSourceList = async (connect: DomainModelNocobase["connect"]) => {
+  const [error, success] = await asyncTryCatch(axios as Axios<DataSource[]>, {
+    url: `${connect.baseURL}/dataSources:list`,
+    method: "get",
+    headers: {
+      authorization: `Bearer ${connect.token}`,
+    },
+    withCredentials: false,
+    params: {
+      paginate: false,
+    },
+  });
+
+  if (error) {
+    console.error(`[nocobase - /dataSources:list] ${error}`);
+    return [];
   }
 
-  /** 鉴权 */
-  async authCheck() {
-    /** 验证token是否过期 */
-    const [error, checkSuccess] = await asyncTryCatch(axios as Axios, {
-      url: `${this._connect.baseURL}/auth:check`,
-      method: "get",
-      headers: {
-        authorization: `Bearer ${this._connect.token}`,
-      },
-      withCredentials: false,
-    });
+  return success.data.data;
+};
 
-    if (checkSuccess) {
-      return true;
-    }
+/** 获取数据表列表 */
+const getCollectionList = async (
+  connect: DomainModelNocobase["connect"],
+  dataSource: DataSource,
+) => {
+  const [error, success] = await asyncTryCatch(axios as Axios<Collections>, {
+    url: `${connect.baseURL}/dataSources/${dataSource.key}/collections:list`,
+    method: "get",
+    headers: {
+      authorization: `Bearer ${connect.token}`,
+    },
+    withCredentials: false,
+    params: {
+      paginate: false,
+      // sort: ["sort"],
+      appends: ["fields", "category"],
+      filter: JSON.stringify({ hidden: { $isFalsy: true } }),
+    },
+  });
 
-    console.error(`[nocobase - /auth:check] ${error}`);
-
-    return false;
+  if (error) {
+    console.error(`[nocobase - /collections:list] ${error}`);
+    return [];
   }
-}
 
-const getDomainModels = async (domainModel: DomainModelNocobase) => {
-  const { id, connect } = domainModel;
-  const nocobase = new Nocobase(connect);
-  const domainModelNocobases = await nocobase.getDomainModels();
-
-  return domainModelNocobases.map((domainModel) => {
-    return {
-      ...domainModel,
-      id: `${id}.${domainModel.id}`,
-    };
+  return success.data.data.sort((a, b) => {
+    return a.sort > b.sort ? 1 : -1;
   });
 };
 
 export default Nocobase;
 
-export { getDomainModels };
+export { authCheck, getDomainModels };
 
 export type { DomainModelNocobase };
