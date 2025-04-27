@@ -9,7 +9,7 @@ type CallOptions = {
     /** 模型ID */
     defId: string;
     /** 服务 */
-    service: DomainModel["services"][0];
+    service: DomainModel["domainAry"][0]["services"][0];
   };
   /** 参数 */
   params: Any;
