@@ -1,12 +1,9 @@
 import { asyncTryCatch } from "@luckybytes/utils";
-import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
+import axios from "axios";
 import { getLocaleText } from "./locale";
 import { fieldConvert } from "./utils";
+import type { Axios } from "../type";
 import type { DomainModelNocobase, Connect, Collections } from "./type";
-
-type Axios<R = unknown> = (
-  config: AxiosRequestConfig<unknown>,
-) => Promise<AxiosResponse<{ data: R }, Any>>;
 
 class Nocobase {
   constructor(private _connect: Connect) {}
@@ -95,6 +92,7 @@ const getDomainModels = async (domainModel: DomainModelNocobase) => {
                 name: `/${collection.name}:list`,
                 title: `/${collection.name}:list`,
                 method: "get",
+                type: "list",
                 params: [
                   {
                     name: "pageSize",
@@ -149,6 +147,7 @@ const getDomainModels = async (domainModel: DomainModelNocobase) => {
                 name: `/${collection.name}:get`,
                 title: `/${collection.name}:get`,
                 method: "get",
+                type: "get",
                 params: [
                   {
                     name: "id",
@@ -176,6 +175,7 @@ const getDomainModels = async (domainModel: DomainModelNocobase) => {
                 name: `/${collection.name}:create`,
                 title: `/${collection.name}:create`,
                 method: "post",
+                type: "create",
                 params: fields
                   .filter((filed) => {
                     // 目前根据数据结构分析如下判断为主外键字段以及系统字段，不需要在创建时传递
@@ -210,6 +210,7 @@ const getDomainModels = async (domainModel: DomainModelNocobase) => {
                 name: `/${collection.name}:update`,
                 title: `/${collection.name}:update`,
                 method: "post",
+                type: "update",
                 params: [
                   {
                     name: "id",
@@ -257,6 +258,7 @@ const getDomainModels = async (domainModel: DomainModelNocobase) => {
                 name: `/${collection.name}:destroy`,
                 title: `/${collection.name}:destroy`,
                 method: "post",
+                type: "delete",
                 params: [
                   {
                     name: "id",

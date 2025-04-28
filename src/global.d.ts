@@ -24,6 +24,7 @@ type DomainModel = {
       name: string;
       title: string;
       method: "get" | "post";
+      type: "list" | "get" | "create" | "update" | "delete";
       params: {
         name: string;
         title: string;
