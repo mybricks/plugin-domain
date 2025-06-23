@@ -93,7 +93,7 @@ const getDomainModels = async (domainModel: DomainModelNocobase) => {
                 title: `/${collection.name}:list`,
                 method: "get",
                 type: "list",
-                params: [
+                request: [
                   {
                     name: "pageSize",
                     title: "pageSize",
@@ -111,7 +111,7 @@ const getDomainModels = async (domainModel: DomainModelNocobase) => {
                     },
                   },
                 ],
-                responses: {
+                response: {
                   type: "object",
                   properties: {
                     data: {
@@ -148,7 +148,7 @@ const getDomainModels = async (domainModel: DomainModelNocobase) => {
                 title: `/${collection.name}:get`,
                 method: "get",
                 type: "get",
-                params: [
+                request: [
                   {
                     name: "id",
                     title: "ID",
@@ -160,7 +160,7 @@ const getDomainModels = async (domainModel: DomainModelNocobase) => {
                     ["x-replace-name"]: "filterByTk",
                   },
                 ],
-                responses: {
+                response: {
                   type: "object",
                   properties: {
                     data: {
@@ -176,7 +176,7 @@ const getDomainModels = async (domainModel: DomainModelNocobase) => {
                 title: `/${collection.name}:create`,
                 method: "post",
                 type: "create",
-                params: fields
+                request: fields
                   .filter((filed) => {
                     // 目前根据数据结构分析如下判断为主外键字段以及系统字段，不需要在创建时传递
                     return !filed.uiSchema!["x-read-pretty"];
@@ -195,7 +195,7 @@ const getDomainModels = async (domainModel: DomainModelNocobase) => {
                       },
                     };
                   }),
-                responses: {
+                response: {
                   type: "object",
                   properties: {
                     data: {
@@ -211,7 +211,7 @@ const getDomainModels = async (domainModel: DomainModelNocobase) => {
                 title: `/${collection.name}:update`,
                 method: "post",
                 type: "update",
-                params: [
+                request: [
                   {
                     name: "id",
                     title: "ID",
@@ -221,7 +221,7 @@ const getDomainModels = async (domainModel: DomainModelNocobase) => {
                     },
                     ["x-read-only"]: true,
                     ["x-replace-name"]: "filterByTk",
-                  } as DomainModel["domainAry"][0]["services"][0]["params"][0],
+                  } as DomainModel["domainAry"][0]["services"][0]["request"][0],
                 ].concat(
                   fields
                     .filter((filed) => {
@@ -243,7 +243,7 @@ const getDomainModels = async (domainModel: DomainModelNocobase) => {
                       };
                     }),
                 ),
-                responses: {
+                response: {
                   type: "object",
                   properties: {
                     data: {
@@ -259,7 +259,7 @@ const getDomainModels = async (domainModel: DomainModelNocobase) => {
                 title: `/${collection.name}:destroy`,
                 method: "post",
                 type: "delete",
-                params: [
+                request: [
                   {
                     name: "id",
                     title: "ID",
@@ -271,7 +271,7 @@ const getDomainModels = async (domainModel: DomainModelNocobase) => {
                     ["x-replace-name"]: "filterByTk",
                   },
                 ],
-                responses: {
+                response: {
                   type: "object",
                   properties: {
                     data: {
