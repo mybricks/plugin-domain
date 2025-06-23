@@ -136,7 +136,7 @@ class DomainModelExecutor {
           };
 
           const newParamsKeySet = new Set(Object.keys(newParams));
-          service.params.forEach(
+          service.request.forEach(
             ({ name, in: po, ["x-replace-name"]: xReplaceName }) => {
               const key = xReplaceName || name;
               if (po === "body") {

@@ -25,7 +25,7 @@ type DomainModel = {
       title: string;
       method: "get" | "post";
       type: "list" | "get" | "create" | "update" | "delete";
-      params: {
+      request: {
         name: string;
         title: string;
         in: "path" | "query" | "header" | "body";
@@ -35,7 +35,7 @@ type DomainModel = {
         /** 替换name */
         ["x-replace-name"]?: string;
       }[];
-      responses: Schema;
+      response: Schema;
     }[];
   }[];
 };

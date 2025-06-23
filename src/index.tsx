@@ -94,7 +94,7 @@ const domainPlugin = () => {
       return params.data;
     },
     callDomainModel(...args: Parameters<typeof domainModelExecutor.call>) {
-      return domainModelExecutor.call(...args);
+      return domainModelExecutor?.call(...args);
     },
   };
 };
